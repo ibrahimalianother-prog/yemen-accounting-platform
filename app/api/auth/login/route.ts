@@ -5,55 +5,28 @@ import { prisma } from "@/lib/prisma";
 import { signToken } from "@/lib/auth";
 
 const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
+  email: z.string().email().max(256),
+  password: z.string().min(8).max(128),
 });
 
 export async function POST(req: Request) {
+  const parsed = loginSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid email or password format." }, { status: 400 });
+  }
+
   try {
-    const payload = loginSchema.parse(await req.json());
+    const user = await prisma.user.findUnique({
+      where: { email: parsed.data.email },
+    });
 
-    let user: {
-      id: string;
-      email: string;
-      password: string;
-      role: string;
-      fullName: string;
-      companyId: string | null;
-    } | null = null;
+    if (!user || !user.isActive) {
+      return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
+    }
 
-    if (process.env.DATABASE_URL) {
-      user = await prisma.user.findUnique({
-        where: { email: payload.email },
-      });
-
-      if (!user) {
-        return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
-      }
-
-      const valid = await bcrypt.compare(payload.password, user.password);
-      if (!valid) {
-        return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
-      }
-    } else {
-      const fallbackUser = {
-        id: "demo-user-1",
-        fullName: "مدير النظام",
-        email: "admin@yemenaccounting.com",
-        password: await bcrypt.hash("123456", 12),
-        role: "owner",
-        companyId: "demo-company-1",
-      };
-
-      const valid =
-        payload.email === fallbackUser.email &&
-        (await bcrypt.compare(payload.password, fallbackUser.password));
-
-      if (!valid) {
-        return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
-      }
-
-      user = fallbackUser;
+    const valid = await bcrypt.compare(parsed.data.password, user.password);
+    if (!valid) {
+      return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
     }
 
     const token = signToken({
@@ -63,7 +36,6 @@ export async function POST(req: Request) {
     });
 
     const response = NextResponse.json({
-      token,
       user: {
         id: user.id,
         fullName: user.fullName,
@@ -82,13 +54,7 @@ export async function POST(req: Request) {
     });
 
     return response;
-  } catch (error) {
-    return NextResponse.json(
-      {
-        error: "Login failed.",
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 400 },
-    );
+  } catch {
+    return NextResponse.json({ error: "Unable to sign in right now." }, { status: 500 });
   }
 }

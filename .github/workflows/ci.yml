@@ -7,6 +7,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/yemen_accounting?schema=public
+      AUTH_SECRET: ci-only-secret-do-not-use-in-production
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -14,4 +17,5 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm install
+      - run: npx prisma generate
       - run: npm run build
