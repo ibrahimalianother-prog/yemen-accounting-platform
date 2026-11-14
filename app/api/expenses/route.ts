@@ -26,7 +26,10 @@ export async function GET(req: NextRequest) {
     });
 
     if (!user?.isActive || !user.companyId) {
-      return NextResponse.json({ error: "Account is not associated with an active company." }, { status: 403 });
+      return NextResponse.json(
+        { error: "Account is not associated with an active company." },
+        { status: 403 }
+      );
     }
 
     const expenses = await prisma.expense.findMany({
@@ -43,7 +46,10 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(expenses, { headers: noStore });
   } catch {
-    return NextResponse.json({ error: "Unable to retrieve expenses." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Unable to retrieve expenses." },
+      { status: 500 }
+    );
   }
 }
 
@@ -54,7 +60,10 @@ export async function POST(req: NextRequest) {
   try {
     const parsed = expenseSchema.safeParse(await req.json());
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid expense data.", details: parsed.error.flatten() }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid expense data.", details: parsed.error.flatten() },
+        { status: 400 }
+      );
     }
 
     const user = await prisma.user.findUnique({
@@ -63,7 +72,10 @@ export async function POST(req: NextRequest) {
     });
 
     if (!user?.isActive || !user.companyId) {
-      return NextResponse.json({ error: "Account is not associated with an active company." }, { status: 403 });
+      return NextResponse.json(
+        { error: "Account is not associated with an active company." },
+        { status: 403 }
+      );
     }
 
     const body = parsed.data;
@@ -73,7 +85,10 @@ export async function POST(req: NextRequest) {
     });
 
     if (!vendor) {
-      return NextResponse.json({ error: "Vendor not found in your company." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Vendor not found in your company." },
+        { status: 400 }
+      );
     }
 
     if (body.categoryId) {
@@ -82,7 +97,10 @@ export async function POST(req: NextRequest) {
         select: { id: true },
       });
       if (!category) {
-        return NextResponse.json({ error: "Expense category not found." }, { status: 400 });
+        return NextResponse.json(
+          { error: "Expense category not found." },
+          { status: 400 }
+        );
       }
     }
 
@@ -98,17 +116,26 @@ export async function POST(req: NextRequest) {
         status: body.status ?? "draft",
         notes: body.notes ?? null,
       },
-      include: {
-        vendor: true,
-        category: true,
-      },
+      include: { vendor: true, category: true },
     });
 
     return NextResponse.json(expense, { status: 201, headers: noStore });
   } catch (error) {
-    if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
-      return NextResponse.json({ error: "Expense number is already in use." }, { status: 409 });
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "P2002"
+    ) {
+      return NextResponse.json(
+        { error: "Expense number is already in use." },
+        { status: 409 }
+      );
     }
-    return NextResponse.json({ error: "Unable to create expense." }, { status: 500 });
+
+    return NextResponse.json(
+      { error: "Unable to create expense." },
+      { status: 500 }
+    );
   }
 }
