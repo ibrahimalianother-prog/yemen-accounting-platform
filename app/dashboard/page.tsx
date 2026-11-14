@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { connectedReports, expenses, invoices, journalEntries, summaryCards } from "@/lib/mockData";
 
@@ -17,9 +16,9 @@ export default function DashboardPage() {
       actions={
         <>
           <button className="secondary-btn">تصدير</button>
-          <Link href="/journal" className="primary-btn">
+          <a href="/journal" className="primary-btn">
             إضافة قيد
-          </Link>
+          </a>
         </>
       }
     >
@@ -43,9 +42,9 @@ export default function DashboardPage() {
               <p className="eyebrow">الفواتير</p>
               <h3>الفواتير المصدرة</h3>
             </div>
-            <Link href="/invoices" className="ghost-btn">
+            <a href="/invoices" className="ghost-btn">
               عرض الكل
-            </Link>
+            </a>
           </div>
 
           <div className="table-wrap">
@@ -108,9 +107,9 @@ export default function DashboardPage() {
               <p className="eyebrow">قيود اليوم</p>
               <h3>القيود المحاسبية</h3>
             </div>
-            <Link href="/journal" className="ghost-btn">
+            <a href="/journal" className="ghost-btn">
               تفاصيل
-            </Link>
+            </a>
           </div>
 
           <div className="table-wrap">
