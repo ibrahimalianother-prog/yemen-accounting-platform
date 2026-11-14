@@ -1,6 +1,18 @@
 import { NextResponse, NextRequest } from "next/server";
+import jwt from "jsonwebtoken";
+import { getAuthSecret } from "@/lib/auth";
 
-const protectedRoutes = ["/dashboard", "/invoices", "/expenses", "/journal", "/customers", "/vendors", "/reports", "/admin", "/settings"];
+const protectedRoutes = [
+  "/dashboard",
+  "/invoices",
+  "/expenses",
+  "/journal",
+  "/customers",
+  "/vendors",
+  "/reports",
+  "/admin",
+  "/settings",
+];
 
 export function middleware(req: NextRequest) {
   const token = req.cookies.get("auth_token")?.value;
@@ -14,8 +26,7 @@ export function middleware(req: NextRequest) {
   }
 
   try {
-    const jwt = require("jsonwebtoken");
-    jwt.verify(token, process.env.AUTH_SECRET ?? "development_secret_change_me");
+    jwt.verify(token, getAuthSecret());
     return NextResponse.next();
   } catch {
     const response = NextResponse.redirect(new URL("/login", req.url));

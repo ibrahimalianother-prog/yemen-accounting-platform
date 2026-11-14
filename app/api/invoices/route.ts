@@ -1,6 +1,18 @@
-import { NextResponse } from "next/server";
-import { customers, expenses, invoices, journalEntries, vendors } from "@/lib/mockData";
+import { NextRequest, NextResponse } from "next/server";
+import { invoices } from "@/lib/mockData";
+import { requireRole } from "@/lib/server-auth";
 
-export async function GET() {
-  return NextResponse.json({ invoices, expenses, journalEntries, customers, vendors });
+export async function GET(req: NextRequest) {
+  const auth = requireRole(req, ["owner", "accountant", "cashier", "sales", "auditor"]);
+  if (!auth.authorized) return auth.response;
+
+  return NextResponse.json(invoices, { headers: { "Cache-Control": "no-store" } });
+}
+
+export async function POST(req: NextRequest) {
+  const auth = requireRole(req, ["owner", "accountant", "sales"]);
+  if (!auth.authorized) return auth.response;
+
+  const payload = await req.json();
+  return NextResponse.json({ message: "Invoice created", payload }, { status: 201 });
 }
