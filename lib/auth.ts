@@ -10,7 +10,16 @@ export type TokenPayload = {
 export const AUTH_COOKIE = "auth_token";
 
 export function getAuthSecret() {
-  return process.env.AUTH_SECRET ?? "development_secret_change_me";
+  const secret = process.env.AUTH_SECRET;
+
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("AUTH_SECRET is not defined");
+    }
+    return "development_secret_change_me";
+  }
+
+  return secret;
 }
 
 export function signToken(payload: TokenPayload) {
