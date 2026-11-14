@@ -1,0 +1,51 @@
+import { NextRequest, NextResponse } from "next/server";
+import jwt from "jsonwebtoken";
+import { getAuthSecret } from "@/lib/auth";
+
+export type AuthUser = {
+  userId: string;
+  email: string;
+  role: string;
+};
+
+export function getTokenFromRequest(req: NextRequest) {
+  return req.cookies.get("auth_token")?.value ?? null;
+}
+
+export function getAuthenticatedUser(req: NextRequest): AuthUser | null {
+  const token = getTokenFromRequest(req);
+  if (!token) return null;
+
+  try {
+    return jwt.verify(token, getAuthSecret()) as AuthUser;
+  } catch {
+    return null;
+  }
+}
+
+export function requireAuth(req: NextRequest) {
+  const user = getAuthenticatedUser(req);
+
+  if (!user) {
+    return {
+      authorized: false,
+      response: NextResponse.redirect(new URL("/login", req.url)),
+    };
+  }
+
+  return { authorized: true, user };
+}
+
+export function requireRole(req: NextRequest, allowedRoles: string[]) {
+  const auth = requireAuth(req);
+  if (!auth.authorized) return auth;
+
+  if (!allowedRoles.includes(auth.user.role)) {
+    return {
+      authorized: false,
+      response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+    };
+  }
+
+  return { authorized: true, user: auth.user };
+}
