@@ -25,6 +25,7 @@ export function getCurrentUserFromCookies() {
   const cookieStore = cookies();
   const token = cookieStore.get(AUTH_COOKIE)?.value;
   if (!token) return null;
+
   try {
     return verifyToken(token) as TokenPayload;
   } catch {

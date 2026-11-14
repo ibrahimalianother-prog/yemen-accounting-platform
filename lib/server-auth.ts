@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
-import { AUTH_COOKIE, getAuthSecret } from "@/lib/auth";
 
 export type AuthUser = {
   userId: string;
@@ -9,7 +7,7 @@ export type AuthUser = {
 };
 
 export function getTokenFromRequest(req: NextRequest) {
-  return req.cookies.get(AUTH_COOKIE)?.value ?? null;
+  return req.cookies.get("auth_token")?.value ?? null;
 }
 
 export function getAuthenticatedUser(req: NextRequest): AuthUser | null {
@@ -17,7 +15,8 @@ export function getAuthenticatedUser(req: NextRequest): AuthUser | null {
   if (!token) return null;
 
   try {
-    return jwt.verify(token, getAuthSecret()) as AuthUser;
+    const jwt = require("jsonwebtoken");
+    return jwt.verify(token, process.env.AUTH_SECRET ?? "development_secret_change_me") as AuthUser;
   } catch {
     return null;
   }
@@ -29,10 +28,10 @@ export function requireAuth(req: NextRequest) {
     return {
       authorized: false,
       response: NextResponse.redirect(new URL("/login", req.url)),
-    };
+    } as const;
   }
 
-  return { authorized: true, user };
+  return { authorized: true, user } as const;
 }
 
 export function requireRole(req: NextRequest, allowedRoles: string[]) {
@@ -43,8 +42,8 @@ export function requireRole(req: NextRequest, allowedRoles: string[]) {
     return {
       authorized: false,
       response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
-    };
+    } as const;
   }
 
-  return { authorized: true, user: auth.user };
+  return { authorized: true, user: auth.user } as const;
 }

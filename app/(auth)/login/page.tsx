@@ -1,19 +1,20 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+
     const payload = {
-      email: String(form.get("email")),
-      password: String(form.get("password")),
+      email: String(form.get("email") ?? ""),
+      password: String(form.get("password") ?? ""),
     };
 
     setLoading(true);
@@ -51,12 +52,14 @@ export default function LoginPage() {
               <small>Accounting</small>
             </div>
           </div>
+
           <h1>منصة محاسبية عربية متقدمة</h1>
-          <p>إدارة الفواتير، المصروفات، القيود والتقارير مع حماية أذونات المستخدمين.</p>
+          <p>إدارة الفواتير، المصروفات، القيود والتقارير من واجهة موحدة وآمنة.</p>
+
           <ul className="feature-list">
-            <li>لوحة تحكم</li>
-            <li>فواتير ومصروفات</li>
-            <li>قيود وتقرير</li>
+            <li>لوحة تحكم متكاملة</li>
+            <li>متابعة الفواتير والمصروفات</li>
+            <li>قيود محاسبية وتدقيق</li>
           </ul>
         </div>
 
@@ -66,7 +69,7 @@ export default function LoginPage() {
             <h2>مرحباً بك</h2>
           </div>
 
-          <form className="login-form" onSubmit={onSubmit}>
+          <form className="login-form" onSubmit={handleSubmit}>
             <label>
               البريد الإلكتروني
               <input name="email" type="email" defaultValue="admin@yemenaccounting.com" required />

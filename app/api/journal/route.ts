@@ -14,5 +14,5 @@ export async function POST(req: NextRequest) {
   if (!auth.authorized) return auth.response;
 
   const payload = await req.json();
-  return NextResponse.json({ message: "Journal entry created", payload }, { status: 201 });
+  return NextResponse.json({ message: "Journal entry created successfully", payload }, { status: 201 });
 }
