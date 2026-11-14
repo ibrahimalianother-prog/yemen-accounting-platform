@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AppShell } from "@/components/layout/AppShell";
 
 type VendorRecord = {
   id: string;
@@ -77,7 +78,7 @@ export default function VendorsPage() {
   };
 
   return (
-    <div className="page-shell">
+    <AppShell title="الموردون" subtitle="دليل الموردين">
       <section className="panel" style={{ marginBottom: 20 }}>
         <div className="panel-header" style={{ justifyContent: "space-between", alignItems: "center" }}>
           <div>
@@ -162,6 +163,6 @@ export default function VendorsPage() {
           </table>
         </div>
       </section>
-    </div>
+    </AppShell>
   );
 }

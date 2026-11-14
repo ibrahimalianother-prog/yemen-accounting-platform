@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/server-auth";
+import { logAudit } from "@/lib/audit";
+import { ensureDefaultAccounts } from "@/lib/accounting";
 
 const journalSchema = z.object({
   entryNumber: z.string().trim().min(1).max(64),
@@ -11,18 +13,26 @@ const journalSchema = z.object({
   lines: z.array(
     z.object({
       accountCode: z.string().trim().min(1).max(32),
-      accountName: z.string().trim().min(1).max(128),
-      debit: z.number().int().nonnegative().default(0),
-      credit: z.number().int().nonnegative().default(0),
+      // Ignored by the server: the name always comes from the chart of accounts.
+      accountName: z.string().trim().max(128).optional(),
+      debit: z.number().int().nonnegative().max(2_147_483_647).default(0),
+      credit: z.number().int().nonnegative().max(2_147_483_647).default(0),
       description: z.string().trim().max(2000).nullable().optional(),
+    }).refine((line) => (line.debit > 0) !== (line.credit > 0), {
+      message: "Each line must have either a debit or a credit amount.",
     })
-  ).min(1),
-});
+  ).min(2),
+}).refine(
+  (entry) =>
+    entry.lines.reduce((sum, line) => sum + line.debit, 0) ===
+    entry.lines.reduce((sum, line) => sum + line.credit, 0),
+  { message: "Journal entry must be balanced: total debits must equal total credits." }
+);
 
 const noStore = { "Cache-Control": "no-store" };
 
 export async function GET(req: NextRequest) {
-  const auth = requireRole(req, ["owner", "accountant", "cashier", "auditor"]);
+  const auth = await requireRole(req, ["owner", "accountant", "cashier", "auditor"]);
   if (!auth.authorized) return auth.response;
 
   try {
@@ -48,7 +58,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = requireRole(req, ["owner", "accountant"]);
+  const auth = await requireRole(req, ["owner", "accountant"]);
   if (!auth.authorized) return auth.response;
 
   try {
@@ -67,6 +77,22 @@ export async function POST(req: NextRequest) {
     }
 
     const body = parsed.data;
+
+    await ensureDefaultAccounts(prisma, user.companyId);
+    const codes = Array.from(new Set(body.lines.map((line) => line.accountCode)));
+    const accounts = await prisma.account.findMany({
+      where: { companyId: user.companyId, code: { in: codes }, isActive: true },
+      select: { code: true, name: true },
+    });
+    const accountNames = new Map(accounts.map((account) => [account.code, account.name]));
+    const unknown = codes.filter((code) => !accountNames.has(code));
+    if (unknown.length > 0) {
+      return NextResponse.json(
+        { error: `حسابات غير موجودة في دليل الحسابات: ${unknown.join(", ")}` },
+        { status: 400 }
+      );
+    }
+
     const entry = await prisma.journalEntry.create({
       data: {
         companyId: user.companyId,
@@ -77,7 +103,7 @@ export async function POST(req: NextRequest) {
         lines: {
           create: body.lines.map((line) => ({
             accountCode: line.accountCode,
-            accountName: line.accountName,
+            accountName: accountNames.get(line.accountCode) ?? line.accountCode,
             debit: line.debit,
             credit: line.credit,
             description: line.description ?? null,
@@ -85,6 +111,14 @@ export async function POST(req: NextRequest) {
         },
       },
       include: { lines: true },
+    });
+
+    await logAudit({
+      userId: auth.user.userId,
+      action: "journal.create",
+      entityType: "JournalEntry",
+      entityId: entry.id,
+      metadata: { entryNumber: entry.entryNumber, status: entry.status },
     });
 
     return NextResponse.json(entry, { status: 201, headers: noStore });

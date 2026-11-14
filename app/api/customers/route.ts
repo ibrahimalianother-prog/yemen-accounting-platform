@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/server-auth";
+import { logAudit } from "@/lib/audit";
 
 const customerSchema = z.object({
   name: z.string().trim().min(1).max(128),
@@ -13,7 +14,7 @@ const customerSchema = z.object({
 const noStore = { "Cache-Control": "no-store" };
 
 export async function GET(req: NextRequest) {
-  const auth = requireRole(req, ["owner", "accountant", "sales", "auditor"]);
+  const auth = await requireRole(req, ["owner", "accountant", "sales", "auditor"]);
   if (!auth.authorized) return auth.response;
 
   try {
@@ -38,7 +39,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = requireRole(req, ["owner", "accountant", "sales"]);
+  const auth = await requireRole(req, ["owner", "accountant", "sales"]);
   if (!auth.authorized) return auth.response;
 
   try {
@@ -64,6 +65,13 @@ export async function POST(req: NextRequest) {
         email: parsed.data.email ?? null,
         address: parsed.data.address ?? null,
       },
+    });
+
+    await logAudit({
+      userId: auth.user.userId,
+      action: "customer.create",
+      entityType: "Customer",
+      entityId: customer.id,
     });
 
     return NextResponse.json(customer, { status: 201, headers: noStore });

@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import jwt from "jsonwebtoken";
+import { getAuthSecret } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export type AuthUser = {
   userId: string;
@@ -15,8 +18,7 @@ export function getAuthenticatedUser(req: NextRequest): AuthUser | null {
   if (!token) return null;
 
   try {
-    const jwt = require("jsonwebtoken");
-    return jwt.verify(token, process.env.AUTH_SECRET ?? "development_secret_change_me") as AuthUser;
+    return jwt.verify(token, getAuthSecret(), { algorithms: ["HS256"] }) as AuthUser;
   } catch {
     return null;
   }
@@ -27,23 +29,39 @@ export function requireAuth(req: NextRequest) {
   if (!user) {
     return {
       authorized: false,
-      response: NextResponse.redirect(new URL("/login", req.url)),
+      response: NextResponse.json({ error: "Authentication required." }, { status: 401 }),
     } as const;
   }
 
   return { authorized: true, user } as const;
 }
 
-export function requireRole(req: NextRequest, allowedRoles: string[]) {
+/**
+ * Verifies the session and checks the role against the database, not the token, so a role change
+ * or a deactivated account takes effect immediately instead of when the token expires.
+ */
+export async function requireRole(req: NextRequest, allowedRoles: string[]) {
   const auth = requireAuth(req);
   if (!auth.authorized) return auth;
 
-  if (!allowedRoles.includes(auth.user.role)) {
+  const current = await prisma.user.findUnique({
+    where: { id: auth.user.userId },
+    select: { role: true, isActive: true },
+  });
+
+  if (!current || !current.isActive) {
+    return {
+      authorized: false,
+      response: NextResponse.json({ error: "Authentication required." }, { status: 401 }),
+    } as const;
+  }
+
+  if (!allowedRoles.includes(current.role)) {
     return {
       authorized: false,
       response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
     } as const;
   }
 
-  return { authorized: true, user: auth.user } as const;
+  return { authorized: true, user: { ...auth.user, role: current.role } } as const;
 }

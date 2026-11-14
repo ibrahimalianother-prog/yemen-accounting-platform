@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { ReactNode } from "react";
+import { LogoutButton } from "./LogoutButton";
 import { Sidebar } from "./Sidebar";
 
 type AppShellProps = {
@@ -23,9 +23,7 @@ export function AppShell({ title, subtitle, actions, children }: AppShellProps) 
 
           <div className="topbar-actions">
             {actions}
-            <Link href="/login" className="secondary-btn">
-              تسجيل الخروج
-            </Link>
+            <LogoutButton />
           </div>
         </header>
 

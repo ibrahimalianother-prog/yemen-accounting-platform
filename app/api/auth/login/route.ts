@@ -3,21 +3,30 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { signToken } from "@/lib/auth";
+import { clientIp, rateLimit } from "@/lib/rateLimit";
 
 const loginSchema = z.object({
-  email: z.string().email().max(256),
+  email: z.string().trim().email().max(256),
   password: z.string().min(8).max(128),
 });
 
 export async function POST(req: Request) {
+  const limit = rateLimit(`login:${clientIp(req)}`, 10, 15 * 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "محاولات كثيرة. حاول مرة أخرى لاحقاً." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
+  }
+
   const parsed = loginSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid email or password format." }, { status: 400 });
   }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { email: parsed.data.email },
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: parsed.data.email, mode: "insensitive" } },
     });
 
     if (!user || !user.isActive) {

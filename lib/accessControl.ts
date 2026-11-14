@@ -13,5 +13,3 @@ export function hasPermission(role: AppRole, permission: Permission): boolean {
   return rolePermissions[role]?.includes(permission) ?? false;
 }
 
-// Demo-only identity. Replace with a verified server-side session before production.
-export const demoSession = { userId: "demo-owner", companyId: "demo-company", role: "owner" as AppRole };

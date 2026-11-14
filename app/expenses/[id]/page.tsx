@@ -1,15 +1,79 @@
 import { AppShell } from "@/components/layout/AppShell";
-import { expenses } from "@/lib/mockData";
+import { StatusActions, type StatusAction } from "@/components/forms/StatusActions";
+import { formatCurrency, formatDate, safeDecode, statusText } from "@/lib/format";
+import { prisma } from "@/lib/prisma";
+import { requireCompanyContext } from "@/lib/session";
 
-const money = (n: number) => new Intl.NumberFormat("ar-YE", { style: "currency", currency: "YER", maximumFractionDigits: 0 }).format(n);
+export const dynamic = "force-dynamic";
 
-export default function ExpenseDetailPage({ params }: { params: { id: string } }) {
-  const expense = expenses.find((item) => String(item.id) === params.id);
-  if (!expense) return <AppShell title="المصروف غير موجود"><section className="panel">لم يتم العثور على المصروف المطلوب.</section></AppShell>;
-  return <AppShell title={`مصروف #${expense.id}`} subtitle="تفاصيل مصروف نموذجي">
-    <section className="panel"><div className="panel-header"><h3>بيانات المصروف</h3><span className="status paid">مسجل</span></div>
-      <div className="detail-grid"><div><small>الفئة</small><strong>{expense.category}</strong></div><div><small>المورد</small><strong>{expense.vendor}</strong></div><div><small>التاريخ</small><strong>{expense.date}</strong></div><div><small>المبلغ</small><strong>{money(expense.amount)}</strong></div></div>
-      <p className="notice">هذه بيانات تجريبية ثابتة وليست سجلًا ماليًا دائمًا.</p>
-    </section>
-  </AppShell>;
+export default async function ExpenseDetailPage({ params }: { params: { id: string } }) {
+  const { companyId, role } = await requireCompanyContext(["owner", "accountant", "cashier", "auditor"]);
+
+  const expense = await prisma.expense.findFirst({
+    where: { id: safeDecode(params.id), companyId },
+    include: {
+      vendor: { select: { name: true } },
+      category: { select: { name: true } },
+      createdBy: { select: { fullName: true } },
+    },
+  });
+
+  if (!expense) {
+    return (
+      <AppShell title="المصروف غير موجود">
+        <section className="panel">لم يتم العثور على المصروف المطلوب.</section>
+      </AppShell>
+    );
+  }
+
+  const cancelAction: StatusAction = {
+    label: "إلغاء المصروف",
+    payload: { status: "cancelled" },
+    confirm: "هل تريد إلغاء هذا المصروف؟",
+    secondary: true,
+  };
+  const expenseActions: StatusAction[] =
+    expense.status === "draft"
+      ? [{ label: "تسجيل المصروف", payload: { status: "posted" } }, cancelAction]
+      : expense.status === "posted"
+        ? [cancelAction]
+        : [];
+
+  return (
+    <AppShell title={`مصروف ${expense.expenseNumber}`} subtitle="تفاصيل المصروف">
+      <section className="panel">
+        <div className="panel-header">
+          <h3>بيانات المصروف</h3>
+          <span className={`status ${expense.status}`}>{statusText[expense.status] ?? expense.status}</span>
+        </div>
+        <div className="detail-grid">
+          <div>
+            <small>الفئة</small>
+            <strong>{expense.category?.name ?? "-"}</strong>
+          </div>
+          <div>
+            <small>المورد</small>
+            <strong>{expense.vendor.name}</strong>
+          </div>
+          <div>
+            <small>التاريخ</small>
+            <strong>{formatDate(expense.expenseDate)}</strong>
+          </div>
+          <div>
+            <small>المبلغ</small>
+            <strong>{formatCurrency(expense.amount)}</strong>
+          </div>
+          <div>
+            <small>سجّله</small>
+            <strong>{expense.createdBy.fullName}</strong>
+          </div>
+        </div>
+        {expense.notes ? <p className="notice">{expense.notes}</p> : null}
+      </section>
+
+      {["owner", "accountant"].includes(role) ? (
+        <StatusActions endpoint={`/api/expenses/${expense.id}`} actions={expenseActions} />
+      ) : null}
+    </AppShell>
+  );
 }

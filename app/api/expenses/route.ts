@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/server-auth";
+import { logAudit } from "@/lib/audit";
+import { postExpenseAccounting } from "@/lib/accounting";
 
 const expenseSchema = z.object({
   vendorId: z.string().min(1),
   categoryId: z.string().min(1).nullable().optional(),
   expenseNumber: z.string().trim().min(1).max(64),
   expenseDate: z.string().datetime(),
-  amount: z.number().int().positive(),
+  amount: z.number().int().positive().max(2_147_483_647),
   status: z.enum(["draft", "posted", "cancelled"]).optional(),
   notes: z.string().trim().max(2000).nullable().optional(),
 });
@@ -16,7 +18,7 @@ const expenseSchema = z.object({
 const noStore = { "Cache-Control": "no-store" };
 
 export async function GET(req: NextRequest) {
-  const auth = requireRole(req, ["owner", "accountant", "cashier", "auditor"]);
+  const auth = await requireRole(req, ["owner", "accountant", "cashier", "auditor"]);
   if (!auth.authorized) return auth.response;
 
   try {
@@ -54,7 +56,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = requireRole(req, ["owner", "accountant", "cashier"]);
+  const auth = await requireRole(req, ["owner", "accountant", "cashier"]);
   if (!auth.authorized) return auth.response;
 
   try {
@@ -78,6 +80,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const companyId = user.companyId;
+    const userId = auth.user.userId;
     const body = parsed.data;
     const vendor = await prisma.vendor.findFirst({
       where: { id: body.vendorId, companyId: user.companyId },
@@ -92,8 +96,8 @@ export async function POST(req: NextRequest) {
     }
 
     if (body.categoryId) {
-      const category = await prisma.expenseCategory.findUnique({
-        where: { id: body.categoryId },
+      const category = await prisma.expenseCategory.findFirst({
+        where: { id: body.categoryId, OR: [{ companyId: user.companyId }, { companyId: null }] },
         select: { id: true },
       });
       if (!category) {
@@ -104,12 +108,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const expense = await prisma.expense.create({
+    const expense = await prisma.$transaction(async (tx) => {
+      const created = await tx.expense.create({
       data: {
-        companyId: user.companyId,
+        companyId,
         vendorId: body.vendorId,
         categoryId: body.categoryId ?? null,
-        createdById: auth.user.userId,
+        createdById: userId,
         expenseNumber: body.expenseNumber,
         expenseDate: new Date(body.expenseDate),
         amount: body.amount,
@@ -117,6 +122,17 @@ export async function POST(req: NextRequest) {
         notes: body.notes ?? null,
       },
       include: { vendor: true, category: true },
+      });
+      await postExpenseAccounting(tx, created);
+      return created;
+    });
+
+    await logAudit({
+      userId: auth.user.userId,
+      action: "expense.create",
+      entityType: "Expense",
+      entityId: expense.id,
+      metadata: { expenseNumber: expense.expenseNumber, amount: expense.amount },
     });
 
     return NextResponse.json(expense, { status: 201, headers: noStore });

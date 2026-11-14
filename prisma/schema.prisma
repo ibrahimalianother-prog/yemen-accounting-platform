@@ -1,5 +1,5 @@
-# This is your Prisma schema file,
-# learn more about it in the docs: https://pris.ly/d/prisma-schema
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
   provider = "prisma-client-js"
@@ -24,6 +24,8 @@ model Company {
   vendors       Vendor[]
   invoices      Invoice[]
   expenses      Expense[]
+  expenseCategories ExpenseCategory[]
+  accounts      Account[]
   journalEntries JournalEntry[]
 }
 
@@ -75,7 +77,7 @@ model Invoice {
   customer      Customer    @relation(fields: [customerId], references: [id])
   createdById   String
   createdBy     User        @relation(fields: [createdById], references: [id])
-  invoiceNumber String      @unique
+  invoiceNumber String
   issueDate     DateTime
   dueDate       DateTime?
   status        String      @default("draft")
@@ -86,6 +88,8 @@ model Invoice {
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   items         InvoiceItem[]
+
+  @@unique([companyId, invoiceNumber])
 }
 
 model InvoiceItem {
@@ -101,9 +105,16 @@ model InvoiceItem {
 
 model ExpenseCategory {
   id        String   @id @default(uuid())
+  // Null means a shared category visible to every company.
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
   name      String
+  // Code of the expense account (in the company's chart) that expenses of this category post to.
+  accountCode String?
   createdAt DateTime @default(now())
   expenses  Expense[]
+
+  @@index([companyId])
 }
 
 model Expense {
@@ -116,24 +127,35 @@ model Expense {
   category      ExpenseCategory? @relation(fields: [categoryId], references: [id])
   createdById   String
   createdBy     User             @relation(fields: [createdById], references: [id])
-  expenseNumber String          @unique
+  expenseNumber String
   expenseDate   DateTime
   amount        Int
   status        String          @default("draft")
   notes         String?
   createdAt     DateTime        @default(now())
+
+  @@unique([companyId, expenseNumber])
 }
 
 model JournalEntry {
-  id          String   @id @default(uuid())
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id])
-  entryNumber String   @unique
-  entryDate   DateTime
-  description String?
-  status      String   @default("draft")
-  createdAt   DateTime @default(now())
-  lines       JournalEntryLine[]
+  id           String   @id @default(uuid())
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id])
+  entryNumber  String
+  entryDate    DateTime
+  description  String?
+  status       String   @default("draft")
+  // Set on a reversing entry: the id of the posted entry it reverses (at most one reversal per entry).
+  reversalOfId String?  @unique
+  // Set on entries posted automatically from an invoice or expense (one entry per source event).
+  sourceType   String?
+  sourceId     String?
+  sourceEvent  String?
+  createdAt    DateTime @default(now())
+  lines        JournalEntryLine[]
+
+  @@unique([companyId, entryNumber])
+  @@unique([companyId, sourceType, sourceId, sourceEvent])
 }
 
 model JournalEntryLine {
@@ -156,4 +178,19 @@ model AuditLog {
   entityId  String
   createdAt DateTime @default(now())
   metadata  Json?
+}
+
+
+model Account {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  code      String
+  name      String
+  // asset | liability | equity | income | expense
+  type      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([companyId, code])
 }

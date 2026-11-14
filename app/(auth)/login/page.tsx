@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
@@ -72,12 +73,12 @@ export default function LoginPage() {
           <form className="login-form" onSubmit={handleSubmit}>
             <label>
               البريد الإلكتروني
-              <input name="email" type="email" defaultValue="admin@yemenaccounting.com" required />
+              <input name="email" type="email" autoComplete="email" required />
             </label>
 
             <label>
               كلمة المرور
-              <input name="password" type="password" defaultValue="123456" required />
+              <input name="password" type="password" autoComplete="current-password" minLength={8} required />
             </label>
 
             {error ? <div className="error-box">{error}</div> : null}
@@ -86,6 +87,10 @@ export default function LoginPage() {
               {loading ? "جاري تسجيل الدخول..." : "تسجيل الدخول"}
             </button>
           </form>
+
+          <p className="login-alt">
+            ليس لديك حساب؟ <Link href="/register">إنشاء حساب شركة جديدة</Link>
+          </p>
         </div>
       </section>
     </main>

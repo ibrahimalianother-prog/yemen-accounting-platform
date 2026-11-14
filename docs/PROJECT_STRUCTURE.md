@@ -36,7 +36,7 @@
 │       ├── RevenueChart.tsx
 │       └── ExpenseChart.tsx
 ├── lib/
-│   ├── mockData.ts
+│   ├── session.ts
 │   ├── utils.ts
 │   ├── formatters.ts
 │   ├── constants.ts

@@ -1,43 +1,65 @@
+import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
-import { invoices } from "@/lib/mockData";
+import { InvoiceForm } from "@/components/forms/InvoiceForm";
+import { formatCurrency, formatDate, invoiceDisplayStatus, statusText } from "@/lib/format";
+import { prisma } from "@/lib/prisma";
+import { requireCompanyContext } from "@/lib/session";
 
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat("ar-YE", {
-    style: "currency",
-    currency: "YER",
-    maximumFractionDigits: 0,
-  }).format(value);
+export const dynamic = "force-dynamic";
 
-export default function InvoicesPage() {
+const WRITE_ROLES = ["owner", "accountant", "sales"];
+
+export default async function InvoicesPage({ searchParams }: { searchParams: { customer?: string } }) {
+  const { companyId, role } = await requireCompanyContext();
+  const customerFilter = searchParams.customer?.trim() || undefined;
+
+  const [invoices, customers] = await Promise.all([
+    prisma.invoice.findMany({
+      where: { companyId, ...(customerFilter ? { customerId: customerFilter } : {}) },
+      include: { customer: { select: { name: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+    WRITE_ROLES.includes(role)
+      ? prisma.customer.findMany({
+          where: { companyId },
+          select: { id: true, name: true },
+          orderBy: { name: "asc" },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const active = invoices.filter((item) => item.status !== "cancelled");
+
   return (
-    <AppShell
-      title="الفواتير"
-      subtitle="إدارة الفواتير المصدرة والمستحقة وتتبع حالة الدفع"
-      actions={
-        <button className="primary-btn">إنشاء فاتورة</button>
-      }
-    >
+    <AppShell title="الفواتير" subtitle="إدارة الفواتير المصدرة والمستحقة وتتبع حالة الدفع">
       <section className="stats-inline">
         <div className="mini-stat">
           <span>إجمالي الفواتير</span>
-          <strong>{formatCurrency(invoices.reduce((sum, item) => sum + item.total, 0))}</strong>
+          <strong>{formatCurrency(active.reduce((sum, item) => sum + item.totalAmount, 0))}</strong>
         </div>
         <div className="mini-stat">
           <span>مدفوعة</span>
           <strong>{invoices.filter((item) => item.status === "paid").length}</strong>
         </div>
         <div className="mini-stat">
-          <span>قيد المراجعة</span>
+          <span>مستحقة</span>
           <strong>{invoices.filter((item) => item.status === "pending").length}</strong>
         </div>
       </section>
+
+      {WRITE_ROLES.includes(role) ? <InvoiceForm customers={customers} /> : null}
 
       <section className="panel full-width">
         <div className="panel-header">
           <div>
             <p className="eyebrow">القائمة</p>
-            <h3>جميع الفواتير</h3>
+            <h3>{customerFilter ? "فواتير العميل" : "جميع الفواتير"}</h3>
           </div>
+          {customerFilter ? (
+            <Link href="/invoices" className="secondary-btn">
+              عرض الكل
+            </Link>
+          ) : null}
         </div>
 
         <div className="table-wrap">
@@ -53,20 +75,33 @@ export default function InvoicesPage() {
               </tr>
             </thead>
             <tbody>
-              {invoices.map((invoice) => (
-                <tr key={invoice.number}>
-                  <td>{invoice.number}</td>
-                  <td>{invoice.customer}</td>
-                  <td>{invoice.date}</td>
-                  <td>{formatCurrency(invoice.total)}</td>
-                  <td>
-                    <span className={`status ${invoice.status}`}>{invoice.statusText}</span>
-                  </td>
-                  <td>
-                    <button className="table-action">عرض</button>
+              {invoices.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="empty-cell">
+                    لا توجد فواتير حتى الآن.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                invoices.map((invoice) => {
+                  const display = invoiceDisplayStatus(invoice.status, invoice.dueDate);
+                  return (
+                    <tr key={invoice.id}>
+                      <td>{invoice.invoiceNumber}</td>
+                      <td>{invoice.customer.name}</td>
+                      <td>{formatDate(invoice.issueDate)}</td>
+                      <td>{formatCurrency(invoice.totalAmount)}</td>
+                      <td>
+                        <span className={`status ${display}`}>{statusText[display] ?? display}</span>
+                      </td>
+                      <td>
+                        <Link className="table-action" href={`/invoices/${encodeURIComponent(invoice.invoiceNumber)}`}>
+                          عرض
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
