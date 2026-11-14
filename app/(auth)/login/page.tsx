@@ -1,6 +1,45 @@
-import Link from "next/link";
+"use client";
+
+import { useRouter } from "next/navigation";
+import { FormEvent, useState } from "react";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const payload = {
+      email: String(form.get("email")),
+      password: String(form.get("password")),
+    };
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Login failed");
+      }
+
+      router.push("/dashboard");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <main className="login-page">
       <section className="login-panel">
@@ -12,16 +51,12 @@ export default function LoginPage() {
               <small>Accounting</small>
             </div>
           </div>
-
           <h1>منصة محاسبية عربية متقدمة</h1>
-          <p>
-            إدارة الفواتير، المصروفات، القيود والتقارير من واجهة واحدة سريعة وآمنة.
-          </p>
-
+          <p>إدارة الفواتير، المصروفات، القيود والتقارير مع حماية أذونات المستخدمين.</p>
           <ul className="feature-list">
-            <li>لوحة تحكم حقيقية ومخصصة</li>
-            <li>تتبع فواتير ومصروفات دقيقة</li>
-            <li>قيود محاسبية متوازنة وموثقة</li>
+            <li>لوحة تحكم</li>
+            <li>فواتير ومصروفات</li>
+            <li>قيود وتقرير</li>
           </ul>
         </div>
 
@@ -31,29 +66,22 @@ export default function LoginPage() {
             <h2>مرحباً بك</h2>
           </div>
 
-          <form className="login-form">
+          <form className="login-form" onSubmit={onSubmit}>
             <label>
               البريد الإلكتروني
-              <input type="email" defaultValue="admin@yemenaccounting.com" />
+              <input name="email" type="email" defaultValue="admin@yemenaccounting.com" required />
             </label>
 
             <label>
               كلمة المرور
-              <input type="password" defaultValue="123456" />
+              <input name="password" type="password" defaultValue="123456" required />
             </label>
 
-            <div className="form-row">
-              <label className="checkbox-wrap">
-                <input type="checkbox" defaultChecked />
-                <span>تذكرني</span>
-              </label>
+            {error ? <div className="error-box">{error}</div> : null}
 
-              <Link href="/dashboard">نسيت كلمة المرور؟</Link>
-            </div>
-
-            <Link href="/dashboard" className="primary-btn login-btn">
-              تسجيل الدخول
-            </Link>
+            <button type="submit" className="primary-btn login-btn" disabled={loading}>
+              {loading ? "جاري تسجيل الدخول..." : "تسجيل الدخول"}
+            </button>
           </form>
         </div>
       </section>

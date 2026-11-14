@@ -11,33 +11,33 @@ datasource db {
 }
 
 model Company {
-  id          String   @id @default(uuid())
-  name        String
-  email       String?
-  phone       String?
-  taxNumber   String?
-  currency    String   @default("YER")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  users       User[]
-  customers   Customer[]
-  vendors     Vendor[]
-  invoices    Invoice[]
-  expenses    Expense[]
+  id            String        @id @default(uuid())
+  name          String
+  email         String?
+  phone         String?
+  taxNumber     String?
+  currency      String        @default("YER")
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  users         User[]
+  customers     Customer[]
+  vendors       Vendor[]
+  invoices      Invoice[]
+  expenses      Expense[]
   journalEntries JournalEntry[]
 }
 
 model User {
-  id        String   @id @default(uuid())
+  id        String     @id @default(uuid())
   companyId String?
-  company   Company? @relation(fields: [companyId], references: [id])
+  company   Company?   @relation(fields: [companyId], references: [id])
   fullName  String
-  email     String   @unique
+  email     String     @unique
   password  String
-  role      String   @default("accountant")
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role      String     @default("accountant")
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   invoices  Invoice[]
   expenses  Expense[]
   auditLogs AuditLog[]
@@ -68,35 +68,35 @@ model Vendor {
 }
 
 model Invoice {
-  id          String   @id @default(uuid())
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id])
-  customerId  String
-  customer    Customer @relation(fields: [customerId], references: [id])
-  createdById String
-  createdBy   User     @relation(fields: [createdById], references: [id])
-  invoiceNumber String @unique
-  issueDate   DateTime
-  dueDate     DateTime?
-  status      String   @default("draft")
-  subtotal    Int      @default(0)
-  taxAmount   Int      @default(0)
-  totalAmount Int      @default(0)
-  notes       String?
-  items       InvoiceItem[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String      @id @default(uuid())
+  companyId     String
+  company       Company     @relation(fields: [companyId], references: [id])
+  customerId    String
+  customer      Customer    @relation(fields: [customerId], references: [id])
+  createdById   String
+  createdBy     User        @relation(fields: [createdById], references: [id])
+  invoiceNumber String      @unique
+  issueDate     DateTime
+  dueDate       DateTime?
+  status        String      @default("draft")
+  subtotal      Int         @default(0)
+  taxAmount     Int         @default(0)
+  totalAmount   Int         @default(0)
+  notes         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  items         InvoiceItem[]
 }
 
 model InvoiceItem {
-  id        String  @id @default(uuid())
-  invoiceId  String
-  invoice    Invoice @relation(fields: [invoiceId], references: [id])
+  id          String  @id @default(uuid())
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id])
   description String
-  quantity   Int     @default(1)
-  unitPrice  Int
-  total      Int
-  createdAt  DateTime @default(now())
+  quantity    Int     @default(1)
+  unitPrice   Int
+  total       Int
+  createdAt   DateTime @default(now())
 }
 
 model ExpenseCategory {
@@ -107,21 +107,21 @@ model ExpenseCategory {
 }
 
 model Expense {
-  id          String   @id @default(uuid())
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id])
-  vendorId    String
-  vendor      Vendor   @relation(fields: [vendorId], references: [id])
-  categoryId  String?
-  category    ExpenseCategory? @relation(fields: [categoryId], references: [id])
-  createdById String
-  createdBy   User     @relation(fields: [createdById], references: [id])
-  expenseNumber String @unique
-  expenseDate DateTime
-  amount      Int
-  status      String @default("draft")
-  notes       String?
-  createdAt   DateTime @default(now())
+  id            String           @id @default(uuid())
+  companyId     String
+  company       Company          @relation(fields: [companyId], references: [id])
+  vendorId      String
+  vendor        Vendor           @relation(fields: [vendorId], references: [id])
+  categoryId    String?
+  category      ExpenseCategory? @relation(fields: [categoryId], references: [id])
+  createdById   String
+  createdBy     User             @relation(fields: [createdById], references: [id])
+  expenseNumber String          @unique
+  expenseDate   DateTime
+  amount        Int
+  status        String          @default("draft")
+  notes         String?
+  createdAt     DateTime        @default(now())
 }
 
 model JournalEntry {
@@ -137,14 +137,14 @@ model JournalEntry {
 }
 
 model JournalEntryLine {
-  id             String       @id @default(uuid())
-  journalEntryId  String
-  journalEntry    JournalEntry @relation(fields: [journalEntryId], references: [id])
-  accountCode     String
-  accountName     String
-  debit           Int @default(0)
-  credit          Int @default(0)
-  description     String?
+  id            String        @id @default(uuid())
+  journalEntryId String
+  journalEntry  JournalEntry  @relation(fields: [journalEntryId], references: [id])
+  accountCode   String
+  accountName   String
+  debit         Int           @default(0)
+  credit        Int           @default(0)
+  description   String?
 }
 
 model AuditLog {

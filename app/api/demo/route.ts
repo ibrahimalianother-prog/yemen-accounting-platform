@@ -9,7 +9,5 @@ export async function GET() {
     journalEntries,
     customers,
     vendors,
-  }, {
-    headers: { "Cache-Control": "no-store" },
   });
 }
