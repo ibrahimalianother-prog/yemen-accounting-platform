@@ -1,49 +1,30 @@
 # Yemen Accounting Platform
 
-منصة محاسبية عربية متقدمة تم تصميمها كنسخة أولية لإدارة الفواتير، المصروفات، القيود المحاسبية، والتقارير، مع هيكل قابل للتوسع لاحقاً لإضافة الرواتب والمخزون والضرائب.
+Arabic RTL accounting-platform prototype for invoices, expenses, journal entries and reports.
 
-## النطاق الحالي
+## Current scope
 
-- إدارة الفواتير والمشتريات
-- تسجيل المصروفات في الصندوق والحسابات
-- قيد محاسبي مزدوج مع سجل التغييرات
-- تقارير مالية أساسية
-- واجهة عربية متجاوبة (RTL)
-- صلاحيات المستخدمين ونطاق للوحدة الواحدة في البداية
-- تصميم مرن يمكن توسيعه إلى شركات متعددة لاحقاً
+- Dashboard and screens for invoices, expenses, journals, reports, customers, vendors, and demo user-role administration.
+- Static sample data and a read-only demo endpoint at `/api/demo`.
+- Detail routes for invoices, expenses, and journal entries.
+- Arabic RTL UI, Docker starter, CI build workflow, and product documentation under `docs/`.
 
-## التقنيات
-
-- Next.js 14
-- React 18
-- TypeScript
-- CSS Modules / CSS
-
-## التشغيل محلياً
+## Run locally
 
 ```bash
 npm install
 npm run dev
 ```
 
-ثم افتح الصفحة في المتصفح:
+Open `http://localhost:3000`.
 
-```bash
-http://localhost:3000
-```
+## Important limitations
 
-## هيكل المشروع
+This is **not production accounting software yet**. The login view is not real authentication; RBAC is a display/helper model, the demo API is public and read-only, and data is in-memory fixtures. No records persist, no accounting transactions are posted, and no legal/tax compliance is certified. See [deployment readiness](docs/DEPLOYMENT.md) before deployment.
 
-```bash
-app/
-  globals.css
-  layout.tsx
-  page.tsx
-lib/
-  mockData.ts
-```
+## Next engineering milestones
 
-## ملاحظات
-
-- هذه النسخة الأولى تمثل لوحة تحكم احترافية وعرضاً وظيفياً، وليست نسخة إنتاج كاملة للامتثال الضريبي. قبل الاستعمال الفعلي في العمل، يوصى بمراجعة القواعد القانونية والضريبية المحلية مع محاسب أو استشاري مختص.
-- الهدف من المشروع هو تمهيد قاعدة أساسية قوية يمكن تطويرها تدريجياً.
+1. PostgreSQL schema and migrations with tenant isolation.
+2. Real authentication and server-side authorization.
+3. Validated create/update workflows and transactional double-entry posting.
+4. Automated tests, security review, production database/backups, and compliance review.
